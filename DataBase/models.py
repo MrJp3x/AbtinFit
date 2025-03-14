@@ -1,21 +1,26 @@
-from sqlalchemy import create_engine, Column, Integer, String, Date
-from sqlalchemy.orm import declarative_base
+import os
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# تعریف بیس مدل برای استفاده در تمام جداول
+# 📌 مسیر دیتابیس (مطلق)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'users.db')}"
+
+# 📌 اتصال به دیتابیس
+engine = create_engine(DATABASE_URL, echo=False)
+SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
 class User(Base):
+    """مدل کاربر با فیلدهای رمزنگاری‌شده"""
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)  # شناسه‌ی یکتا
-    first_name = Column(String, nullable=False)  # نام
-    last_name = Column(String, nullable=False)  # نام خانوادگی
-    age = Column(Integer, nullable=False)  # سن
-    gender = Column(String, nullable=False)  # جنسیت (مثلاً 'مرد' یا 'زن')
-    birth_date = Column(Date, nullable=False)  # تاریخ تولد
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    age = Column(String, nullable=False)  # سن به‌شکل متن رمزنگاری‌شده ذخیره می‌شود
+    gender = Column(String, nullable=False)
+    birth_date = Column(String, nullable=False)
 
-# ایجاد ارتباط با دیتابیس SQLite
-engine = create_engine("sqlite:///database.db", echo=True)
-
-# ایجاد جداول در دیتابیس
+# 📌 ایجاد جداول در دیتابیس
 Base.metadata.create_all(engine)
