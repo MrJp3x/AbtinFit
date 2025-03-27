@@ -7,12 +7,15 @@ from PySide6.QtGui import QFont
 
 
 class AddUserDialog(QDialog):
-    def __init__(self, db_manager, parent=None):
+    def __init__(self, db_manager, parent=None, user_data=None):
         super().__init__(parent)
         self.db_manager = db_manager
-        self.setWindowTitle("➕ افزودن کاربر جدید")
+        self.user_data = user_data
+        self.setWindowTitle("➕ افزودن کاربر جدید" if not user_data else "✏️ ویرایش کاربر")
         self.setFixedSize(500, 500)
         self._init_ui()
+        if user_data:
+            self._populate_fields()
 
     def _init_ui(self):
         layout = QVBoxLayout()
@@ -28,11 +31,7 @@ class AddUserDialog(QDialog):
         self.birth_date = QLineEdit()
         self.birth_date.setPlaceholderText("مثال: 1378-01-01")
 
-        # تنظیم استایل فونت و سایز
-        font = QFont()
-        font.setPointSize(12)
-
-        # استایل مشترک برای همه ویجت‌ها
+        # استایل
         widget_style = """
             QLineEdit, QComboBox {
                 font-size: 13px;
@@ -48,20 +47,13 @@ class AddUserDialog(QDialog):
         """
         self.setStyleSheet(widget_style)
 
-        # تنظیم فونت برای تمام ویجت‌ها
-        for widget in [
-            self.first_name, self.last_name, self.phone,
-            self.age, self.gender, self.birth_date
-        ]:
-            widget.setFont(font)
-
         # فرم لایه‌بندی
         form_layout = QFormLayout()
         form_layout.setFormAlignment(Qt.AlignRight)
         form_layout.setLabelAlignment(Qt.AlignRight)
         form_layout.setHorizontalSpacing(20)
 
-        # افزودن فیلدها به فرم
+        # افزودن فیلدها
         form_layout.addRow(QLabel("نام:"), self.first_name)
         form_layout.addRow(QLabel("نام خانوادگی:"), self.last_name)
         form_layout.addRow(QLabel("شماره تلفن (11 رقمی):"), self.phone)
@@ -88,6 +80,14 @@ class AddUserDialog(QDialog):
         layout.addLayout(form_layout)
         layout.addWidget(self.submit_btn, alignment=Qt.AlignCenter)
         self.setLayout(layout)
+
+    def _populate_fields(self):
+        self.first_name.setText(self.user_data["first_name"])
+        self.last_name.setText(self.user_data["last_name"])
+        self.phone.setText(self.user_data["phone"])
+        self.age.setText(str(self.user_data["age"]))
+        self.gender.setCurrentText(self.user_data["gender"])
+        self.birth_date.setText(self.user_data["birth_date"])
 
     def _submit(self):
         data = {
@@ -117,9 +117,15 @@ class AddUserDialog(QDialog):
             return
 
         try:
-            success = self.db_manager.add_user(**data)
+            if self.user_data:
+                success = self.db_manager.update_user(self.user_data["id"], **data)
+                msg = "ویرایش کاربر با موفقیت انجام شد!"
+            else:
+                success = self.db_manager.add_user(**data)
+                msg = "کاربر با موفقیت ثبت شد!"
+
             if success:
-                QMessageBox.information(self, "موفق", "کاربر با موفقیت ثبت شد!")
-                self.close()
+                QMessageBox.information(self, "موفق", msg)
+                self.accept()  # تغییر از close() به accept() برای فعال کردن رفرش
         except Exception as e:
-            QMessageBox.critical(self, "خطا", f"خطا در ثبت کاربر:\n{str(e)}")
+            QMessageBox.critical(self, "خطا", f"خطا در عملیات:\n{str(e)}")

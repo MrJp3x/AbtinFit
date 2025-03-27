@@ -1,8 +1,9 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTableView, QPushButton,
-    QLineEdit, QHBoxLayout, QHeaderView, QMessageBox
+    QLineEdit, QHBoxLayout, QHeaderView, QMessageBox,
+    QToolButton
 )
-from PySide6.QtCore import Qt, QAbstractTableModel, Slot
+from PySide6.QtCore import Qt, QAbstractTableModel, Slot, QModelIndex
 from PySide6.QtGui import QFont
 from UI.add_user_dialog import AddUserDialog
 
@@ -11,7 +12,7 @@ class UserTableModel(QAbstractTableModel):
     def __init__(self, data):
         super().__init__()
         self._data = data
-        self._headers = ["ID", "نام", "نام خانوادگی", "شماره تلفن", "سن", "جنسیت", "تاریخ تولد"]
+        self._headers = ["ID", "نام", "نام خانوادگی", "شماره تلفن", "سن", "جنسیت", "تاریخ تولد", "ویرایش"]
 
     def rowCount(self, parent=None):
         return len(self._data)
@@ -98,21 +99,42 @@ class UserPanel(QWidget):
 
     @Slot()
     def _load_users(self):
+        # بارگذاری مجدد کاربران از دیتابیس
         users = self.db_manager.get_users()
         search_term = self.search_input.text().strip().lower()
 
         filtered = [
-            [u["id"], u["first_name"], u["last_name"], u["phone"], u["age"], u["gender"], u["birth_date"]]
+            [u["id"], u["first_name"], u["last_name"], u["phone"], u["age"], u["gender"], u["birth_date"], ""]
             for u in users if search_term in (u["first_name"] + u["last_name"]).lower()
         ]
 
+        # ایجاد مدل جدید و تنظیم آن
         model = UserTableModel(filtered)
         self.table.setModel(model)
 
+        # افزودن دکمه ویرایش به هر سطر
+        for row in range(model.rowCount()):
+            user_id = filtered[row][0]
+            edit_btn = QToolButton()
+            edit_btn.setText("✏️")
+            edit_btn.setStyleSheet("font-size: 16px;")
+            edit_btn.clicked.connect(lambda _, uid=user_id: self._edit_user(uid))
+            self.table.setIndexWidget(model.index(row, 7), edit_btn)
+
     def _show_add_dialog(self):
         dialog = AddUserDialog(self.db_manager, self)
-        dialog.exec_()
-        self._load_users()
+        if dialog.exec_():
+            self._load_users()  # رفرش جدول پس از افزودن کاربر
+
+    def _edit_user(self, user_id):
+        user = next((u for u in self.db_manager.get_users() if u["id"] == user_id), None)
+        if not user:
+            QMessageBox.warning(self, "خطا", "کاربر یافت نشد!")
+            return
+
+        dialog = AddUserDialog(self.db_manager, self, user_data=user)
+        if dialog.exec_():
+            self._load_users()  # رفرش جدول پس از ویرایش
 
     def _delete_user(self):
         selected = self.table.selectionModel().selectedRows()
@@ -122,4 +144,4 @@ class UserPanel(QWidget):
 
         user_id = int(self.table.model()._data[selected[0].row()][0])
         self.db_manager.delete_user(user_id)
-        self._load_users()
+        self._load_users()  # رفرش جدول پس از حذف
