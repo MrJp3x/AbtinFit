@@ -2,6 +2,7 @@ from sqlalchemy.orm import sessionmaker
 from .models import engine, User
 from .crypto_manager import CryptoManager
 
+
 class DatabaseManager:
     def __init__(self):
         self.crypto = CryptoManager()
@@ -22,7 +23,7 @@ class DatabaseManager:
                 session.commit()
             return True
         except Exception as e:
-            print(f"Error adding user: {str(e)}")
+            print(f"خطا در افزودن کاربر: {str(e)}")
             return False
 
     def get_users(self):
@@ -53,9 +54,12 @@ class DatabaseManager:
         with self.SessionLocal() as session:
             user = session.query(User).filter(User.id == user_id).first()
             if not user:
-                return
+                return False
 
             for key, value in kwargs.items():
                 if hasattr(user, key):
-                    setattr(user, key, self.crypto.encrypt(str(value)))
+                    encrypted_value = self.crypto.encrypt(str(value))
+                    setattr(user, key, encrypted_value)
+
             session.commit()
+            return True
