@@ -99,7 +99,6 @@ class UserPanel(QWidget):
 
     @Slot()
     def _load_users(self):
-        # بارگذاری مجدد کاربران از دیتابیس
         users = self.db_manager.get_users()
         search_term = self.search_input.text().strip().lower()
 
@@ -108,7 +107,6 @@ class UserPanel(QWidget):
             for u in users if search_term in (u["first_name"] + u["last_name"]).lower()
         ]
 
-        # ایجاد مدل جدید و تنظیم آن
         model = UserTableModel(filtered)
         self.table.setModel(model)
 
@@ -124,7 +122,7 @@ class UserPanel(QWidget):
     def _show_add_dialog(self):
         dialog = AddUserDialog(self.db_manager, self)
         if dialog.exec_():
-            self._load_users()  # رفرش جدول پس از افزودن کاربر
+            self._load_users()
 
     def _edit_user(self, user_id):
         user = next((u for u in self.db_manager.get_users() if u["id"] == user_id), None)
@@ -134,7 +132,7 @@ class UserPanel(QWidget):
 
         dialog = AddUserDialog(self.db_manager, self, user_data=user)
         if dialog.exec_():
-            self._load_users()  # رفرش جدول پس از ویرایش
+            self._load_users()
 
     def _delete_user(self):
         selected = self.table.selectionModel().selectedRows()
@@ -142,6 +140,15 @@ class UserPanel(QWidget):
             QMessageBox.warning(self, "خطا", "لطفاً یک کاربر را انتخاب کنید!")
             return
 
-        user_id = int(self.table.model()._data[selected[0].row()][0])
-        self.db_manager.delete_user(user_id)
-        self._load_users()  # رفرش جدول پس از حذف
+        # نمایش پیام تأیید
+        reply = QMessageBox.question(
+            self,
+            "تأیید حذف",
+            "آیا مطمئن هستید می‌خواهید این کاربر را حذف کنید؟",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            user_id = int(self.table.model()._data[selected[0].row()][0])
+            self.db_manager.delete_user(user_id)
+            self._load_users()
