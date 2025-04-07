@@ -178,3 +178,4 @@ garb
 main.py
 **.key
 **.db
+*.enc
