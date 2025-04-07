@@ -22,13 +22,21 @@ class SMSWorker(QThread):
         try:
             sms_service = IPPANELService(self.api_key)
             total = len(self.phone_numbers)
-            for i, number in enumerate(self.phone_numbers):
-                sms_service.send_sms("+9810001", [number], self.message)
-                self.progress.emit(int((i + 1) / total * 100))
-            self.finished.emit(True, "پیام‌ها با موفقیت ارسال شدند!")
+
+            # ارسال به صورت گروهی (هر 100 شماره)
+            batch_size = 100
+            for i in range(0, total, batch_size):
+                batch = self.phone_numbers[i:i + batch_size]
+                result = sms_service.send_sms(batch, self.message)
+
+                if result['status'] != 'success':
+                    raise Exception(result['message'])
+
+                self.progress.emit(int((i + len(batch)) / total * 100))
+
+                self.finished.emit(True, "پیام‌ها با موفقیت ارسال شدند!")
         except Exception as e:
             self.finished.emit(False, f"خطا: {str(e)}")
-
 
 class SmsPanel(QWidget):
     def __init__(self, db_manager):
@@ -112,8 +120,6 @@ class SmsPanel(QWidget):
 
     def _send_sms(self):
         """ارسال پیامک به کاربران انتخاب شده"""
-        print(f"Attempting to send to {len(self.selected_users)} users")
-
         if not self.selected_users:
             QMessageBox.warning(self, "خطا", "لطفاً حداقل یک دریافت‌کننده انتخاب کنید!")
             return
@@ -123,21 +129,25 @@ class SmsPanel(QWidget):
             QMessageBox.warning(self, "خطا", "لطفاً متن پیام را وارد کنید!")
             return
 
-        # دریافت API Key از تنظیمات (رمزگشایی شده)
-        from DataBase.crypto_manager import CryptoManager
-        crypto = CryptoManager()
-        encrypted_api_key = "your_encrypted_api_key_here"  # باید از config بیاید
-        api_key = crypto.decrypt(encrypted_api_key)
+        try:
+            from DataBase.crypto_manager import CryptoManager
+            crypto = CryptoManager()
+            api_key = crypto.get_api_key()
 
-        phone_numbers = [u["phone"] for u in self.selected_users]
+            phone_numbers = [u["phone"] for u in self.selected_users]
 
-        # ایجاد نخ برای ارسال
-        self.worker = SMSWorker(phone_numbers, message, api_key)
-        self.worker.progress.connect(self._update_progress)
-        self.worker.finished.connect(self._handle_result)
-        self.send_btn.setEnabled(False)
-        self.progress_label.setText("در حال ارسال...")
-        self.worker.start()
+            # ایجاد نخ برای ارسال
+            self.worker = SMSWorker(phone_numbers, message, api_key)
+            self.worker.progress.connect(self._update_progress)
+            self.worker.finished.connect(self._handle_result)
+            self.send_btn.setEnabled(False)
+            self.progress_label.setText("در حال ارسال...")
+            self.worker.start()
+
+        except Exception as e:
+            QMessageBox.critical(self, "خطا", f"خطا در ارسال پیامک: {str(e)}")
+            self.progress_label.setText("خطا در ارسال")
+            self.send_btn.setEnabled(True)
 
     def _update_progress(self, value):
         self.progress_label.setText(f"پیشرفت: {value}%")
