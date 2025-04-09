@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QHBoxLayout, QHeaderView, QMessageBox,
     QToolButton
 )
-from PySide6.QtCore import Qt, QAbstractTableModel, Slot, QModelIndex
+from PySide6.QtCore import Qt, QAbstractTableModel, Slot, QModelIndex, Signal
 from PySide6.QtGui import QFont
 from UI.add_user_dialog import AddUserDialog
 
@@ -32,6 +32,8 @@ class UserTableModel(QAbstractTableModel):
 
 
 class UserPanel(QWidget):
+    user_added = Signal()
+
     def __init__(self, db_manager):
         super().__init__()
         self.db_manager = db_manager
@@ -123,6 +125,7 @@ class UserPanel(QWidget):
         dialog = AddUserDialog(self.db_manager, self)
         if dialog.exec_():
             self._load_users()
+            self.user_added.emit()
 
     def _edit_user(self, user_id):
         user = next((u for u in self.db_manager.get_users() if u["id"] == user_id), None)
@@ -133,6 +136,7 @@ class UserPanel(QWidget):
         dialog = AddUserDialog(self.db_manager, self, user_data=user)
         if dialog.exec_():
             self._load_users()
+            self.user_added.emit()
 
     def _delete_user(self):
         selected = self.table.selectionModel().selectedRows()

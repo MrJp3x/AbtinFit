@@ -152,6 +152,12 @@ class SmsPanel(QWidget):
     def _update_progress(self, value):
         self.progress_label.setText(f"پیشرفت: {value}%")
 
+    def refresh_users(self):
+        """به‌روزرسانی لیست کاربران از دیتابیس"""
+        self.selected_users = []  # پاک کردن انتخاب‌های قبلی
+        self._load_users()
+        self.progress_label.setText("آماده برای ارسال")
+
     def _handle_result(self, success, message):
         self.send_btn.setEnabled(True)
         if success:

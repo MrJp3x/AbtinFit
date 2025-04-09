@@ -15,6 +15,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.db_manager = DatabaseManager()
         self._init_ui()
+        self.user_panel.user_added.connect(self.sms_panel.refresh_users)
 
     def _init_ui(self):
         self.setWindowTitle("نرم‌افزار مدیریت ماساژ")
